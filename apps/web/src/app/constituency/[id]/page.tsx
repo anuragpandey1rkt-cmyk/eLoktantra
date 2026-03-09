@@ -55,7 +55,7 @@ export default function ConstituencyPage({ params }: { params: { id: string } })
         {candidates?.length === 0 && (
           <div className="col-span-full text-center py-16 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-500">
             <h3 className="text-xl font-medium mb-2">No Candidates Found</h3>
-            <p>We do not have any candidate records for the constituency "{params.id}" yet.</p>
+            <p>We do not have any candidate records for the constituency &quot;{params.id}&quot; yet.</p>
           </div>
         )}
       </div>

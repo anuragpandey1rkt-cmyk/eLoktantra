@@ -1,7 +1,6 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import axios from 'axios';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
-const API_GATEWAY = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { apiClient } from './client';
 
 export interface Election {
   id: string;
@@ -24,22 +23,26 @@ export interface ElectionDetail extends Election {
 }
 
 export const fetchElections = async (): Promise<Election[]> => {
-  const { data } = await axios.get(`${API_GATEWAY}/voting/elections`);
+  const { data } = await apiClient.get('/voting/elections');
   return data.elections || [];
 };
 
 export const fetchElectionById = async (id: string): Promise<ElectionDetail> => {
-  const { data } = await axios.get(`${API_GATEWAY}/voting/elections/${id}`);
+  const { data } = await apiClient.get(`/voting/elections/${id}`);
   return data.election;
 };
 
-export const generateVotingToken = async (params: { voterId: string, electionId: string }): Promise<string> => {
-  const { data } = await axios.post(`${API_GATEWAY}/voting/generate-token`, params);
+export const generateVotingToken = async (params: { voterId: string; electionId: string }): Promise<string> => {
+  const { data } = await apiClient.post('/voting/generate-token', params);
   return data.tokenHash;
 };
 
-export const castVote = async (params: { electionId: string, tokenHash: string, encryptedVote: string }): Promise<{ txHash: string, receipt: string }> => {
-  const { data } = await axios.post(`${API_GATEWAY}/voting/vote`, params);
+export const castVote = async (params: {
+  electionId: string;
+  tokenHash: string;
+  encryptedVote: string;
+}): Promise<{ txHash: string; receipt: string }> => {
+  const { data } = await apiClient.post('/voting/vote', params);
   return { txHash: data.txHash, receipt: data.receipt };
 };
 

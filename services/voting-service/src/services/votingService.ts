@@ -1,9 +1,17 @@
-import { FastifyInstance } from 'fastify';
-import '../plugins/supabase';
 import axios from 'axios';
+import { FastifyInstance } from 'fastify';
 
-const IDENTITY_URL = process.env.IDENTITY_SERVICE_URL || 'http://localhost:4008';
-const BLOCKCHAIN_URL = process.env.BLOCKCHAIN_SERVICE_URL || 'http://localhost:4009';
+import { config } from '@eloktantra/config';
+import { badRequest, conflict, forbidden, internalError, notFound } from '@eloktantra/utils';
+
+import '../plugins/supabase';
+
+const IDENTITY_URL = config.services.identity.url;
+const LEDGER_URL = config.services.ledger.url;
+
+const httpClient = axios.create({
+  timeout: config.requestTimeoutMs,
+});
 
 export class VotingService {
   private supabase: FastifyInstance['supabase'];
@@ -12,93 +20,150 @@ export class VotingService {
     this.supabase = fastify.supabase;
   }
 
-  async getElections() {
-    const { data, error } = await this.supabase
-      .from('elections')
-      .select('*')
-      .order('start_time', { ascending: false });
+  async getElections(status?: string, constituency?: string) {
+    let query = this.supabase.from('elections').select('*').order('start_time', { ascending: false });
 
-    if (error) throw new Error(error.message);
-    return data;
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (constituency) {
+      query = query.eq('constituency', constituency);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw badRequest(error.message);
+    return data || [];
   }
 
   async getElectionById(id: string) {
-    const { data, error } = await this.supabase
-      .from('elections')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data, error } = await this.supabase.from('elections').select('*').eq('id', id).single();
 
-    if (error) throw new Error(error.message);
-    
-    // Also fetch candidates for the election's constituency
-    const { data: candidates } = await this.supabase
+    if (error || !data) throw notFound('Election not found');
+
+    const { data: candidates, error: candidateError } = await this.supabase
       .from('candidates')
       .select('*')
-      .eq('constituency', data.constituency);
+      .eq('constituency', data.constituency)
+      .order('name', { ascending: true });
+
+    if (candidateError) {
+      throw badRequest(candidateError.message);
+    }
 
     return { ...data, candidates: candidates || [] };
   }
 
-  async createElection(electionData: any) {
-    const { data, error } = await this.supabase
-      .from('elections')
-      .insert([electionData])
-      .select()
-      .single();
+  async createElection(electionData: {
+    title: string;
+    constituency: string;
+    start_time: string;
+    end_time: string;
+    status?: 'UPCOMING' | 'ACTIVE' | 'COMPLETED';
+  }) {
+    const startTime = new Date(electionData.start_time);
+    const endTime = new Date(electionData.end_time);
 
-    if (error) throw new Error(error.message);
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+      throw badRequest('start_time and end_time must be valid ISO timestamps');
+    }
+
+    if (startTime >= endTime) {
+      throw badRequest('end_time must be greater than start_time');
+    }
+
+    const payload = {
+      ...electionData,
+      status: electionData.status || 'UPCOMING',
+    };
+
+    const { data, error } = await this.supabase.from('elections').insert([payload]).select().single();
+
+    if (error || !data) throw badRequest(error?.message || 'Unable to create election');
     return data;
   }
 
   async generateToken(voterId: string, electionId: string) {
-    // Generate token by calling identity-service
-    const response = await axios.post(`${IDENTITY_URL}/generate-voting-token`, {
-      voterId,
-      electionId
-    });
-    return response.data.tokenHash;
+    try {
+      const response = await httpClient.post(`${IDENTITY_URL}/generate-voting-token`, {
+        voterId,
+        electionId,
+      });
+
+      return response.data.tokenHash as string;
+    } catch (error: any) {
+      const message = error?.response?.data?.error || error?.message || 'Unable to generate token';
+      throw badRequest(message);
+    }
   }
 
   async submitVote(electionId: string, tokenHash: string, encryptedVote: string) {
-    // 1. Verify token with Identity Service or DB
-    const { data: tokenData, error: tokenError } = await this.supabase
+    if (!electionId || !tokenHash || !encryptedVote) {
+      throw badRequest('electionId, tokenHash and encryptedVote are required');
+    }
+
+    const election = await this.getElectionById(electionId);
+
+    if (election.status !== 'ACTIVE') {
+      throw forbidden('Election is not active');
+    }
+
+    const now = new Date();
+    if (now < new Date(election.start_time) || now > new Date(election.end_time)) {
+      throw forbidden('Election is outside active voting window');
+    }
+
+    const { data: tokenRecord, error: tokenError } = await this.supabase
       .from('voting_tokens')
-      .select('*')
+      .update({ used: true, used_at: now.toISOString() })
       .eq('token_hash', tokenHash)
       .eq('election_id', electionId)
+      .eq('used', false)
+      .select('id, expires_at')
       .single();
 
-    if (tokenError || !tokenData) throw new Error('Invalid voting token');
-    if (tokenData.used) throw new Error('Token has already been used');
+    if (tokenError || !tokenRecord) {
+      throw conflict('Invalid token, expired token, or token already used');
+    }
 
-    // 2. Mark token as used
-    await this.supabase
-      .from('voting_tokens')
-      .update({ used: true })
-      .eq('id', tokenData.id);
+    if (tokenRecord.expires_at && now > new Date(tokenRecord.expires_at)) {
+      await this.supabase.from('voting_tokens').update({ used: false, used_at: null }).eq('id', tokenRecord.id);
+      throw forbidden('Voting token has expired');
+    }
 
-    // 3. Submit encrypted vote to Blockchain Ledger
-    const ledgerResponse = await axios.post(`${BLOCKCHAIN_URL}/record-vote`, {
-      electionId,
-      encryptedVote
-    });
+    try {
+      const ledgerResponse = await httpClient.post(`${LEDGER_URL}/record-vote`, {
+        electionId,
+        encryptedVote,
+      });
 
-    const txHash = ledgerResponse.data.txHash;
+      const txHash = ledgerResponse.data.txHash;
+      if (!txHash) {
+        throw internalError('Blockchain ledger did not return a transaction hash');
+      }
 
-    // 4. Record vote in DB
-    const { data: vote, error: voteError } = await this.supabase
-      .from('votes')
-      .insert([{
-        election_id: electionId,
-        encrypted_vote: encryptedVote,
-        blockchain_tx_hash: txHash
-      }])
-      .select()
-      .single();
+      const { data: vote, error: voteError } = await this.supabase
+        .from('votes')
+        .insert([
+          {
+            election_id: electionId,
+            token_id: tokenRecord.id,
+            encrypted_vote: encryptedVote,
+            blockchain_tx_hash: txHash,
+          },
+        ])
+        .select()
+        .single();
 
-    if (voteError) throw new Error(voteError.message);
+      if (voteError || !vote) {
+        throw badRequest(voteError?.message || 'Unable to record vote');
+      }
 
-    return vote;
+      return vote;
+    } catch (error) {
+      await this.supabase.from('voting_tokens').update({ used: false, used_at: null }).eq('id', tokenRecord.id);
+      throw error;
+    }
   }
 }

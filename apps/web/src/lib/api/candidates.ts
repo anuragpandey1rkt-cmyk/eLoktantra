@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
 
-const API_GATEWAY = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { apiClient } from './client';
 
 export interface Candidate {
   id: string;
@@ -15,17 +14,17 @@ export interface Candidate {
 }
 
 export const fetchCandidates = async (): Promise<Candidate[]> => {
-  const { data } = await axios.get(`${API_GATEWAY}/candidates`);
+  const { data } = await apiClient.get('/candidates');
   return data.candidates || [];
 };
 
 export const fetchCandidateById = async (id: string): Promise<Candidate> => {
-  const { data } = await axios.get(`${API_GATEWAY}/candidates/${id}`);
+  const { data } = await apiClient.get(`/candidates/${id}`);
   return data.candidate;
 };
 
 export const fetchCandidatesByConstituency = async (constituencyId: string): Promise<Candidate[]> => {
-  const { data } = await axios.get(`${API_GATEWAY}/candidates/constituency/${constituencyId}`);
+  const { data } = await apiClient.get(`/candidates/constituency/${constituencyId}`);
   return data.candidates || [];
 };
 

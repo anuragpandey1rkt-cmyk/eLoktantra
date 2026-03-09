@@ -1,63 +1,91 @@
-# eLoktantra - Civic Tech Platform
+# eLoktantra Monorepo
 
-eLoktantra is a scalable platform for election transparency and civic participation in India.
+Production-oriented civic-tech platform backbone for:
+- Candidate transparency
+- Civic issue reporting
+- Identity verification
+- Tokenized voting flow
+- Blockchain-style audit receipts
 
-## Project Structure
+## Monorepo Layout
 
-- `apps/web`: Next.js Frontend (Next.js 14, TypeScript, TailwindCSS)
-- `services/*`: Microservices (Auth, Candidate, Manifesto, Issue Reporting, etc.)
-- `shared/types`: Shared TypeScript definitions
-- `shared/db`: Prisma schema and database migrations
-- `shared/config`: Common configuration and environment management
+- `apps/web` - Next.js citizen-facing web app
+- `services/api-gateway` - API gateway and service routing
+- `services/auth-service` - registration/login/JWT auth
+- `services/candidate-service` - candidate transparency APIs
+- `services/manifesto-service` - policy intelligence (summaries + comparisons)
+- `services/issue-service` - issue reporting APIs
+- `services/promise-service` - candidate promise tracking and progress APIs
+- `services/identity-service` - voter verification + voting token issuance
+- `services/voting-service` - election + vote submission orchestration
+- `services/blockchain-service` - deterministic tx-hash ledger adapter
+- `services/audit-service` - vote audit APIs
+- `packages/config` - shared runtime/env config
+- `packages/types` - shared types
+- `packages/utils` - shared error/security/runtime utilities
 
-## Tech Stack
+## Prerequisites
 
-- **Frontend**: Next.js (App Router), TailwindCSS, ShadCN UI
-- **Backend**: Node.js, Express, TypeScript
-- **Database**: PostgreSQL with Prisma ORM
-- **Auth**: JWT-based roll-based access
-- **DevOps**: Docker, Docker Compose
+- Node.js 20+
+- pnpm (via Corepack)
+- Supabase project (or compatible Postgres + Supabase API)
 
-## Quick Start (Local Development)
+## Setup
 
-1. **Install Dependencies**
+1. Install dependencies:
 
-   ```bash
-   npm install
-   ```
+```bash
+corepack pnpm install
+```
 
-2. **Environment Setup**
-   Copy `.env.example` to `.env` and fill in your details.
+2. Configure environment:
 
-3. **Database Setup**
+```bash
+cp infrastructure/env.template .env
+# Fill values in .env
+```
 
-   ```bash
-   npm run db:generate --workspace shared-db
-   # After starting PostgreSQL
-   npm run db:push --workspace shared-db
-   ```
+3. Create schema in Supabase:
+- Run `supabase-schema.sql` in the Supabase SQL editor.
 
-4. **Run Development Services**
+4. Start services (without Turbo):
 
-   ```bash
-   # Run all services and web app
-   npm run dev
-   ```
+```bash
+corepack pnpm --filter api-gateway dev
+corepack pnpm --filter auth-service dev
+corepack pnpm --filter candidate-service dev
+corepack pnpm --filter manifesto-service dev
+corepack pnpm --filter issue-service dev
+corepack pnpm --filter promise-service dev
+corepack pnpm --filter identity-service dev
+corepack pnpm --filter voting-service dev
+corepack pnpm --filter blockchain-service dev
+corepack pnpm --filter audit-service dev
+corepack pnpm --filter web dev
+```
 
-5. **Docker Deployment**
-   ```bash
-   docker-compose up --build
-   ```
+## API Surface (Phase 1)
 
-## Microservices Architecture
+- Auth: `/auth/register`, `/auth/login`, `/auth/me`
+- Candidate transparency: `/candidates`, `/candidates/search`, `/candidates/:id`
+- Manifesto intelligence: `/manifestos`, `/manifestos/compare`, `/manifestos/:id`
+- Issues: `/issues` (GET/POST)
+- Promise tracker: `/promises`, `/promises/candidate/:id`, `/promises/:id/progress`
+- Voting: `/voting/elections`, `/voting/generate-token`, `/voting/vote`
+- Identity: `/identity/verify-voter`, `/identity/generate-voting-token`
+- Audit: `/audit/election/:id`, `/audit/vote/:hash`
 
-- **Auth Service**: User registration and role-based login (Port 4001)
-- **Candidate Service**: Profiles and transparency data (Port 4002)
-- **Issue Reporting Service**: Civic issue tracking (Port 4004)
-- **... additional services follow the same pattern.**
+All APIs include:
+- JSON-schema request validation
+- Consistent error payloads
+- Security headers
+- Graceful shutdown handling
+- Health/readiness endpoints
 
-## API Documentation
+## Production Notes
 
-- Auth: `POST /api/auth/register`, `POST /api/auth/login`
-- Candidates: `GET /api/candidates`, `GET /api/candidates/:id`
-- Issues: `GET /api/issues`, `POST /api/issues`
+- Set strong `JWT_SECRET` (>=32 chars).
+- Keep `SUPABASE_SERVICE_ROLE_KEY` secret and server-side only.
+- Set explicit `CORS_ORIGINS` per environment.
+- Put all services behind TLS termination and WAF/rate-limit at ingress.
+- Run DB migrations/schema updates via controlled pipeline.

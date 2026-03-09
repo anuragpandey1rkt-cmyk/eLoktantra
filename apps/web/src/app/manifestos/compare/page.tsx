@@ -5,12 +5,25 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+interface ManifestoComparisonEntry {
+  manifesto_id: string;
+  party: string;
+  summary: string;
+  policy_text: string;
+}
+
+interface ManifestoComparisonCategory {
+  category: string;
+  insight: string;
+  manifestos: ManifestoComparisonEntry[];
+}
+
 export default function CompareManifestosPage() {
-  const { data: categories, isLoading } = useQuery({
+  const { data: categories, isLoading } = useQuery<ManifestoComparisonCategory[]>({
     queryKey: ['manifesto-comparison'],
     queryFn: async () => {
       const { data } = await axios.get(`${API_URL}/manifestos/compare`);
-      return data.categories;
+      return (data.categories || []) as ManifestoComparisonCategory[];
     }
   });
 
@@ -25,14 +38,15 @@ export default function CompareManifestosPage() {
         </header>
 
         <div className="space-y-12">
-          {Object.entries(categories || {}).map(([category, policies]: [string, any]) => (
-            <section key={category}>
+          {(categories || []).map((categoryBlock) => (
+            <section key={categoryBlock.category}>
               <h2 className="text-2xl font-bold text-gray-900 border-l-4 border-blue-600 pl-4 mb-6 uppercase tracking-widest text-sm">
-                {category}
+                {categoryBlock.category}
               </h2>
+              <p className="text-sm text-gray-600 mb-4">{categoryBlock.insight}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {policies.map((policy: any) => (
-                  <div key={policy.party} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                {categoryBlock.manifestos.map((policy) => (
+                  <div key={policy.manifesto_id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">
                         {policy.party[0]}
@@ -41,7 +55,7 @@ export default function CompareManifestosPage() {
                     </div>
                     <div className="flex-grow">
                       <p className="text-sm text-gray-700 italic mb-4 leading-relaxed">
-                        "{policy.text.substring(0, 150)}..."
+                        {policy.policy_text.substring(0, 150)}...
                       </p>
                       <div className="bg-blue-50 p-4 rounded-xl">
                         <p className="text-xs font-bold text-blue-800 uppercase mb-2">AI Summary</p>

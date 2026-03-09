@@ -1,35 +1,59 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import dotenv from 'dotenv';
+
+import { config } from '@eloktantra/config';
+import {
+  corsOriginFromList,
+  registerDefaultErrorHandler,
+  registerGracefulShutdown,
+  registerSecurityHeaders,
+} from '@eloktantra/utils';
+
 import supabasePlugin from './plugins/supabase';
 import candidateRoutes from './routes/candidates';
 
 dotenv.config();
 
-const fastify = Fastify({ logger: true });
-const PORT = parseInt(process.env.PORT || '4002', 10);
+const SERVICE_NAME = 'candidate-service';
+const PORT = config.services.candidate.port;
 
-fastify.register(cors);
-
-// Register Supabase Plugin
-fastify.register(supabasePlugin);
-
-// Health Check
-fastify.get('/health', async () => {
-  return { status: 'OK', service: 'candidate-service' };
+const fastify = Fastify({
+  logger: { level: config.logLevel },
+  requestTimeout: config.requestTimeoutMs,
+  trustProxy: true,
 });
 
-// Register routes
+registerSecurityHeaders(fastify, config.isProduction);
+registerDefaultErrorHandler(fastify, SERVICE_NAME);
+registerGracefulShutdown(fastify, SERVICE_NAME, config.shutdownTimeoutMs);
+
+fastify.register(cors, {
+  origin: corsOriginFromList(config.corsOrigins),
+  credentials: true,
+});
+
+fastify.register(supabasePlugin);
+
+fastify.get('/health', async () => {
+  return {
+    success: true,
+    status: 'ok',
+    service: SERVICE_NAME,
+    timestamp: new Date().toISOString(),
+  };
+});
+
 fastify.register(candidateRoutes);
 
 const start = async () => {
   try {
-    await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    console.log(`Candidate Service running on http://localhost:${PORT}`);
+    await fastify.listen({ port: PORT, host: config.host });
+    fastify.log.info(`Candidate Service running on http://localhost:${PORT}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 };
 
-start();
+void start();

@@ -5,12 +5,34 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+interface PromiseCandidateInfo {
+  name: string;
+  party: string;
+  constituency?: string;
+}
+
+interface PromiseRecord {
+  id: string;
+  title: string;
+  description: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
+  progress_percentage: number;
+  candidates?: PromiseCandidateInfo | PromiseCandidateInfo[] | null;
+}
+
+const resolveCandidate = (
+  candidate: PromiseRecord['candidates']
+): PromiseCandidateInfo | undefined => {
+  if (!candidate) return undefined;
+  return Array.isArray(candidate) ? candidate[0] : candidate;
+};
+
 export default function PromisesPage() {
-  const { data: promises, isLoading } = useQuery({
+  const { data: promises, isLoading } = useQuery<PromiseRecord[]>({
     queryKey: ['promises'],
     queryFn: async () => {
       const { data } = await axios.get(`${API_URL}/promises`);
-      return data.promises;
+      return (data.promises || []) as PromiseRecord[];
     }
   });
 
@@ -25,12 +47,14 @@ export default function PromisesPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {promises?.map((promise: any) => (
+          {promises?.map((promise) => {
+            const candidate = resolveCandidate(promise.candidates);
+            return (
             <div key={promise.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="font-bold text-gray-900">{promise.candidates?.name}</h3>
-                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest">{promise.candidates?.party}</p>
+                  <h3 className="font-bold text-gray-900">{candidate?.name || 'Unknown Candidate'}</h3>
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest">{candidate?.party || 'Independent'}</p>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-xs font-bold ${
                   promise.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
@@ -41,7 +65,7 @@ export default function PromisesPage() {
               </div>
               
               <p className="text-gray-700 mb-6 leading-relaxed">
-                "{promise.description}"
+                {promise.description}
               </p>
 
               <div className="space-y-2">
@@ -57,7 +81,7 @@ export default function PromisesPage() {
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
 
         {promises?.length === 0 && (

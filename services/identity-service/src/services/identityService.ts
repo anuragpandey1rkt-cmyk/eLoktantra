@@ -1,6 +1,25 @@
+import { randomBytes } from 'node:crypto';
+
 import { FastifyInstance } from 'fastify';
+
+import { badRequest, conflict, forbidden, notFound } from '@eloktantra/utils';
+
 import '../plugins/supabase';
-import { v4 as uuidv4 } from 'uuid';
+
+interface ElectionRecord {
+  id: string;
+  constituency: string;
+  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETED';
+  start_time: string;
+  end_time: string;
+}
+
+interface VoterRecord {
+  id: string;
+  constituency: string;
+  is_verified: boolean;
+  status: string;
+}
 
 export class IdentityService {
   private supabase: FastifyInstance['supabase'];
@@ -9,51 +28,98 @@ export class IdentityService {
     this.supabase = fastify.supabase;
   }
 
-  async verifyVoter(voterId: string) {
-    // In a real system, this would check Aadhaar or other ID
-    // For now, we check if the user exists and is verified in the system
+  async verifyVoter(voterId: string): Promise<VoterRecord> {
+    if (!voterId) {
+      throw badRequest('voterId is required');
+    }
+
     const { data, error } = await this.supabase
       .from('users')
-      .select('id, verified_status, constituency')
+      .select('id, constituency, is_verified, status')
       .eq('id', voterId)
       .single();
 
-    if (error || !data) throw new Error('Voter not found');
-    if (!data.verified_status) throw new Error('Voter is not verified');
+    if (error || !data) throw notFound('Voter not found');
+    if (!data.is_verified) throw forbidden('Voter is not verified');
+    if (data.status !== 'ACTIVE') throw forbidden('Voter account is not active');
 
-    return data;
+    return data as VoterRecord;
+  }
+
+  private async getElection(electionId: string): Promise<ElectionRecord> {
+    const { data, error } = await this.supabase
+      .from('elections')
+      .select('id, constituency, status, start_time, end_time')
+      .eq('id', electionId)
+      .single();
+
+    if (error || !data) {
+      throw notFound('Election not found');
+    }
+
+    return data as ElectionRecord;
   }
 
   async generateVotingToken(voterId: string, electionId: string) {
-    // 1. Check eligibility
-    const voter = await this.verifyVoter(voterId);
+    if (!voterId || !electionId) {
+      throw badRequest('voterId and electionId are required');
+    }
 
-    // 2. Check if already voted/has token
-    const { data: existingToken } = await this.supabase
+    const voter = await this.verifyVoter(voterId);
+    const election = await this.getElection(electionId);
+
+    if (voter.constituency !== election.constituency) {
+      throw forbidden('Voter is not eligible for this constituency election');
+    }
+
+    if (election.status !== 'ACTIVE') {
+      throw forbidden('Voting tokens can only be generated for active elections');
+    }
+
+    const now = new Date();
+    const startTime = new Date(election.start_time);
+    const endTime = new Date(election.end_time);
+
+    if (now < startTime || now > endTime) {
+      throw forbidden('Election is outside active voting window');
+    }
+
+    const { data: existingToken, error: tokenLookupError } = await this.supabase
       .from('voting_tokens')
-      .select('id')
+      .select('id, token_hash, used, expires_at')
       .eq('voter_id', voterId)
       .eq('election_id', electionId)
-      .single();
+      .maybeSingle();
 
-    if (existingToken) throw new Error('Voting token already generated for this election');
+    if (tokenLookupError) {
+      throw badRequest(tokenLookupError.message);
+    }
 
-    // 3. Generate anonymous token hash
-    const tokenHash = uuidv4();
+    if (existingToken) {
+      if (existingToken.used) {
+        throw conflict('A token for this election has already been used by this voter');
+      }
 
-    // 4. Store token
+      return existingToken;
+    }
+
+    const tokenHash = randomBytes(32).toString('hex');
+
     const { data, error } = await this.supabase
       .from('voting_tokens')
-      .insert([{
-        voter_id: voterId,
-        election_id: electionId,
-        token_hash: tokenHash,
-        used: false
-      }])
-      .select()
+      .insert([
+        {
+          voter_id: voterId,
+          election_id: electionId,
+          token_hash: tokenHash,
+          used: false,
+          expires_at: election.end_time,
+        },
+      ])
+      .select('id, token_hash, used, expires_at')
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error || !data) throw badRequest(error?.message || 'Unable to create voting token');
 
     return data;
   }

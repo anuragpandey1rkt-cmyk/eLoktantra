@@ -1,31 +1,59 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import dotenv from 'dotenv';
+
+import { config } from '@eloktantra/config';
+import {
+  corsOriginFromList,
+  registerDefaultErrorHandler,
+  registerGracefulShutdown,
+  registerSecurityHeaders,
+} from '@eloktantra/utils';
+
 import supabasePlugin from './plugins/supabase';
 import manifestoRoutes from './routes/manifesto';
 
 dotenv.config();
 
-const fastify = Fastify({ logger: true });
-const PORT = parseInt(process.env.PORT || '4003', 10);
+const SERVICE_NAME = 'manifesto-service';
+const PORT = config.services.manifesto.port;
 
-fastify.register(cors);
+const fastify = Fastify({
+  logger: { level: config.logLevel },
+  requestTimeout: config.requestTimeoutMs,
+  trustProxy: true,
+});
+
+registerSecurityHeaders(fastify, config.isProduction);
+registerDefaultErrorHandler(fastify, SERVICE_NAME);
+registerGracefulShutdown(fastify, SERVICE_NAME, config.shutdownTimeoutMs);
+
+fastify.register(cors, {
+  origin: corsOriginFromList(config.corsOrigins),
+  credentials: true,
+});
+
 fastify.register(supabasePlugin);
 
 fastify.get('/health', async () => {
-  return { status: 'OK', service: 'manifesto-service' };
+  return {
+    success: true,
+    status: 'ok',
+    service: SERVICE_NAME,
+    timestamp: new Date().toISOString(),
+  };
 });
 
 fastify.register(manifestoRoutes, { prefix: '/manifestos' });
 
 const start = async () => {
   try {
-    await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    console.log(`Manifesto Service running on http://localhost:${PORT}`);
+    await fastify.listen({ port: PORT, host: config.host });
+    fastify.log.info(`Manifesto Service running on http://localhost:${PORT}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 };
 
-start();
+void start();

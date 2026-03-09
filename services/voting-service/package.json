@@ -4,11 +4,13 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@eloktantra/config": "workspace:*",
     "@eloktantra/types": "workspace:*",
+    "@eloktantra/utils": "workspace:*",
     "@fastify/cors": "^8.3.0",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.2",
