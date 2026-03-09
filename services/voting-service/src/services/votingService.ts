@@ -3,7 +3,7 @@ import '../plugins/supabase';
 import axios from 'axios';
 
 const IDENTITY_URL = process.env.IDENTITY_SERVICE_URL || 'http://localhost:4008';
-const LEDGER_URL = process.env.LEDGER_SERVICE_URL || 'http://localhost:4009';
+const BLOCKCHAIN_URL = process.env.BLOCKCHAIN_SERVICE_URL || 'http://localhost:4009';
 
 export class VotingService {
   private supabase: FastifyInstance['supabase'];
@@ -79,7 +79,7 @@ export class VotingService {
       .eq('id', tokenData.id);
 
     // 3. Submit encrypted vote to Blockchain Ledger
-    const ledgerResponse = await axios.post(`${LEDGER_URL}/record-vote`, {
+    const ledgerResponse = await axios.post(`${BLOCKCHAIN_URL}/record-vote`, {
       electionId,
       encryptedVote
     });

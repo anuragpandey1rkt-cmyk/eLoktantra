@@ -68,3 +68,36 @@ CREATE TABLE votes (
 -- Seed an Election
 INSERT INTO elections (id, title, constituency, start_time, end_time, status)
 VALUES ('e1111111-1111-1111-1111-111111111111', 'Varanasi General Election 2026', 'Varanasi', NOW() - INTERVAL '1 day', NOW() + INTERVAL '1 day', 'ACTIVE');
+
+-- Manifesto Intelligence System
+CREATE TABLE manifestos (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  party TEXT NOT NULL,
+  policy_category TEXT NOT NULL, -- economy, education, healthcare, infrastructure, environment
+  policy_text TEXT NOT NULL,
+  summary TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Civic Issue Reporting Platform
+CREATE TABLE issues (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  location TEXT NOT NULL,
+  issue_type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT DEFAULT 'PENDING', -- PENDING, IN_PROGRESS, RESOLVED
+  reported_by UUID, -- references Users.id
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Promise Tracker
+CREATE TABLE promises (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  candidate_id UUID REFERENCES candidates(id),
+  description TEXT NOT NULL,
+  status TEXT DEFAULT 'NOT_STARTED', -- NOT_STARTED, IN_PROGRESS, COMPLETED, ABANDONED
+  progress_percentage INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

@@ -13,7 +13,7 @@ export const config = {
     promiseTracker: { port: process.env.PROMISE_SERVICE_PORT || 4006, url: 'http://localhost:4006' },
     voting: { port: process.env.VOTING_SERVICE_PORT || 4007, url: 'http://localhost:4007' },
     identity: { port: process.env.IDENTITY_SERVICE_PORT || 4008, url: 'http://localhost:4008' },
-    ledger: { port: process.env.LEDGER_SERVICE_PORT || 4009, url: 'http://localhost:4009' },
+    blockchain: { port: process.env.BLOCKCHAIN_SERVICE_PORT || 4009, url: 'http://localhost:4009' },
     audit: { port: process.env.AUDIT_SERVICE_PORT || 4010, url: 'http://localhost:4010' },
     misinformationAi: { port: process.env.AI_SERVICE_PORT || 4011, url: 'http://localhost:4011' },
   }

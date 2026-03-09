@@ -43,6 +43,24 @@ fastify.register(proxy, {
 });
 
 fastify.register(proxy, {
+  upstream: config.services.blockchain.url,
+  prefix: '/blockchain',
+  rewritePrefix: ''
+});
+
+fastify.register(proxy, {
+  upstream: config.services.manifesto.url,
+  prefix: '/manifestos',
+  rewritePrefix: '/manifestos'
+});
+
+fastify.register(proxy, {
+  upstream: config.services.promiseTracker.url,
+  prefix: '/promises',
+  rewritePrefix: '/promises'
+});
+
+fastify.register(proxy, {
   upstream: config.services.audit.url,
   prefix: '/audit',
   rewritePrefix: '/audit'
