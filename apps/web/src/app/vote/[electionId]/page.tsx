@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useStrictVotingLock } from "@/hooks/useStrictVotingLock"
 import axios from "axios"
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSecureVotingSession } from '@/hooks/useSecureVotingSession';
 import { useElection, generateVotingToken, castVote } from '@/lib/api/voting';
 import { getStoredUser } from '@/lib/api/auth';
@@ -19,21 +19,19 @@ declare global {
   }
 }
 
-export default function VotingPage() {
+function VotingContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const electionId = params.electionId as string;
 
   // Token Enforcement (Moved to top level)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      const token = searchParams.get('token');
-      if (!token) {
-        router.push('/vote');
-      }
+    const token = searchParams.get('token');
+    if (!token) {
+      router.push('/vote');
     }
-  }, [router]);
+  }, [router, searchParams]);
 
   const { data: election, isLoading: isLoadingElection } = useElection(electionId);
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
@@ -500,8 +498,7 @@ export default function VotingPage() {
       
       // 2. Map Voting Token from URL or fallback generator (requires auth)
       console.log("Locating voting token...");
-      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      let tokenHash = searchParams?.get('token');
+      let tokenHash = searchParams.get('token');
       
       if (!tokenHash) {
         tokenHash = await generateVotingToken({
@@ -850,5 +847,20 @@ export default function VotingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VotingPage() {
+  return (
+    <Suspense fallback={
+       <div className="min-h-screen flex items-center justify-center bg-black">
+         <div className="text-center space-y-4">
+           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+           <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Entering Secure Region...</p>
+         </div>
+       </div>
+    }>
+      <VotingContent />
+    </Suspense>
   );
 }
