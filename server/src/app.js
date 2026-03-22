@@ -39,6 +39,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.get('/auth/digilocker/callback', authController.digilockerCallback);
+app.get('/auth/users', authController.getUsers);
 app.post('/verify-face', authController.faceVerify);
 app.post('/risk/evaluate', voteController.evaluateRisk);
 app.post('/generate-token', voteController.generateVotingToken);

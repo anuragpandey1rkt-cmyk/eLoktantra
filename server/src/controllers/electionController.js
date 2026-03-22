@@ -1,35 +1,54 @@
-const fs = require('fs');
-const path = require('path');
+const electionRepository = require('../repositories/electionRepository');
 
-const getElections = (req, res) => {
-    try {
-        const DATA_PATH = path.join(__dirname, '../data/elections.json');
-
-        if (!fs.existsSync(DATA_PATH)) {
-            return res.status(404).json({
-                success: false,
-                message: `Elections data not found.`
-            });
-        }
-
-        const rawData = fs.readFileSync(DATA_PATH, 'utf-8');
-        const electionsData = JSON.parse(rawData);
-
-        return res.status(200).json({
-            success: true,
-            data: electionsData.elections
-        });
-
-    } catch (error) {
-        console.error("Error fetching elections:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error.",
-            error: error.message
-        });
+const getActiveElection = async (req, res) => {
+  try {
+    const election = await electionRepository.getActiveElection();
+    if (!election) {
+      return res.status(200).json({ success: true, title: 'No active election', id: null });
     }
+    // Remote might expect the election directly or wrapped in data
+    res.json(election);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch active election' });
+  }
+};
+
+const getElections = async (req, res) => {
+  try {
+    const elections = await electionRepository.findAll();
+    res.json({ 
+      success: true, 
+      elections: elections,
+      data: elections // Backward compatibility with remote expectation
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch elections' });
+  }
+};
+
+const createElection = async (req, res) => {
+  try {
+    const election = await electionRepository.create(req.body);
+    res.status(201).json({ success: true, election });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create election' });
+  }
+};
+
+const updateElectionStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const election = await electionRepository.updateStatus(id, status);
+    res.json({ success: true, election });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update election status' });
+  }
 };
 
 module.exports = {
-    getElections
+  getActiveElection,
+  getElections,
+  createElection,
+  updateElectionStatus
 };
