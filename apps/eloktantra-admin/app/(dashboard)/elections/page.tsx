@@ -21,6 +21,7 @@ export default function ElectionsPage() {
       const { data } = await backendAPI.get('/election');
       setElections(data.elections || data || []);
     } catch (error) {
+      console.error('FETCH_ELECTIONS_ERROR:', error);
       toast.error('Election Ledger (NestJS) currently unavailable');
     } finally {
       setIsLoading(false);
