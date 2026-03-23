@@ -307,8 +307,8 @@ export default function VotePage() {
   }, [step]);
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 flex flex-col items-center justify-center bg-[#0a0a0a]">
-      <div className="max-w-2xl w-full bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+    <div className="min-h-screen pt-20 pb-10 px-3 sm:px-4 flex flex-col items-center justify-center bg-[#0a0a0a]">
+      <div className="max-w-2xl w-full bg-[#111] border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-12 shadow-2xl relative overflow-hidden">
 
         {/* Progress Bar */}
         <div className="flex justify-between mb-12 relative">
@@ -330,7 +330,7 @@ export default function VotePage() {
         {/* Step 1: DigiLocker Auth */}
         {step === 1 && (
           <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-3xl font-bold mb-4 text-white">Identity Verification</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-white">Identity Verification</h1>
             <p className="text-gray-400 mb-8 leading-relaxed">
               To proceed with voting, we need to verify your identity using <span className="text-white font-semibold">DigiLocker</span>. This ensures a "One Person, One Vote" policy.
             </p>
@@ -349,7 +349,7 @@ export default function VotePage() {
               )}
             </button>
             
-            {/* Demo Skip Button */}
+          {/* Demo Skip Button */}
             <button
               onClick={handleSkipDigiLocker}
               className="w-full mt-4 py-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 rounded-xl transition-all text-sm font-medium"
@@ -357,19 +357,50 @@ export default function VotePage() {
               Skip All (Demo)
             </button>
 
+            {/* DEV MODE BUTTON: No 1-vote limit, no auth required */}
+            <button
+              onClick={async () => {
+                setLoading(true);
+                setError('');
+                try {
+                  await fetch('/api/dev/reset-vote', { method: 'POST' });
+                } catch (e) { /* non-blocking */ }
+
+                const devToken = `dev-token-${Math.random().toString(36).substring(7)}`;
+                setVotingToken(devToken);
+
+                // 🛠️ Clear ALL voting session locks from localStorage
+                const targetElectionId = elections?.[0]?.id || 'delhi-2024';
+                localStorage.removeItem('voting_token');
+                localStorage.removeItem(`voter_session_${targetElectionId}`);
+                // Also clear any other election session keys
+                Object.keys(localStorage)
+                  .filter(k => k.startsWith('voter_session_'))
+                  .forEach(k => localStorage.removeItem(k));
+
+                localStorage.setItem('voting_token', devToken);
+                setLoading(false);
+                router.push(`/vote/${targetElectionId}?token=${devToken}&dev=true`);
+              }}
+              className="w-full mt-3 py-3 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 hover:text-orange-300 border border-orange-500/30 rounded-xl transition-all text-sm font-bold flex items-center justify-center gap-2"
+            >
+              🛠️ Developer Mode (Skip All)
+            </button>
+
             <p className="mt-6 text-xs text-gray-500">Secure connection powered by eLoktantra Auth Bridge</p>
           </div>
         )}
 
+
         {/* Step 2: Automated Face Verification */}
         {step === 2 && (
           <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-3xl font-black mb-4 text-white uppercase tracking-tighter">AI Liveness Shield</h1>
+            <h1 className="text-2xl sm:text-3xl font-black mb-4 text-white uppercase tracking-tighter">AI Liveness Shield</h1>
             <p className="text-gray-400 mb-8 leading-relaxed font-medium">
               Authenticating <span className="text-primary font-bold">{user?.name}</span>...
             </p>
 
-            <div className="relative w-72 h-72 mx-auto mb-10 group">
+            <div className="relative w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 mx-auto mb-8 sm:mb-10 group">
               {/* Scanning Pulse Elements */}
               <div className="absolute inset-0 rounded-full border-4 border-primary/20 animate-ping"></div>
               <div className="absolute -inset-2 rounded-full border-2 border-primary/40 border-dotted animate-spin-slow"></div>
@@ -452,7 +483,7 @@ export default function VotePage() {
         {/* Step 3: Risk Evaluation */}
         {step === 3 && (
           <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-3xl font-bold mb-4 text-white">Security Check</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-white">Security Check</h1>
             <p className="text-gray-400 mb-8 leading-relaxed">
               One final step. Our AI risk engine is evaluating your session parameters for security compliance.
             </p>
@@ -487,14 +518,14 @@ export default function VotePage() {
               </svg>
             </div>
 
-            <h1 className="text-3xl font-bold mb-4 text-white">Verification Complete</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-white">Verification Complete</h1>
             <p className="text-gray-400 mb-8">
               Verification successful. You are now authorized to cast your vote.
             </p>
 
             <div className="p-6 bg-primary/10 border border-primary/20 rounded-2xl mb-8">
               <span className="text-xs text-primary font-bold uppercase tracking-widest block mb-2">Your One-Time Voting Token</span>
-              <div className="text-xl font-mono text-white font-bold tracking-wider break-all">
+              <div className="text-sm sm:text-base font-mono text-white font-bold tracking-wide break-all">
                 {votingToken}
               </div>
               <p className="text-[10px] text-gray-500 mt-4">This token expires in 2 hours and can only be used once.</p>

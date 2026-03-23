@@ -1,146 +1,295 @@
 import Link from 'next/link';
 
+const stats = [
+  { value: '1.4B+', label: 'Citizens', icon: '👥' },
+  { value: '543', label: 'Constituencies', icon: '🗺️' },
+  { value: '8,500+', label: 'Candidates', icon: '🏛️' },
+  { value: '100%', label: 'Transparency', icon: '🔍' },
+];
+
+const features = [
+  {
+    title: 'Transparent Candidates',
+    description: 'Deep dive into candidate backgrounds, criminal records, and financial asset disclosures — all in one place.',
+    href: '/candidates',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+      </svg>
+    ),
+    color: 'from-blue-500/10 to-blue-600/5',
+    border: 'hover:border-blue-500/25',
+    iconColor: 'text-blue-400 bg-blue-500/10',
+  },
+  {
+    title: 'Live Elections',
+    description: 'Track ongoing elections in real-time. Follow results, turnout, and declarations as they happen.',
+    href: '/elections',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+      </svg>
+    ),
+    color: 'from-orange-500/10 to-orange-600/5',
+    border: 'hover:border-orange-500/25',
+    iconColor: 'text-orange-400 bg-orange-500/10',
+  },
+  {
+    title: 'Civic Issue Reporting',
+    description: 'Report local problems directly to representatives and track resolution progress with full accountability.',
+    href: '/issues',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+      </svg>
+    ),
+    color: 'from-yellow-500/10 to-yellow-600/5',
+    border: 'hover:border-yellow-500/25',
+    iconColor: 'text-yellow-400 bg-yellow-500/10',
+  },
+  {
+    title: 'Promise Tracker',
+    description: 'Hold leaders accountable by tracking manifesto commitments against real-world delivery and progress.',
+    href: '/promises',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    color: 'from-green-500/10 to-green-600/5',
+    border: 'hover:border-green-500/25',
+    iconColor: 'text-green-400 bg-green-500/10',
+  },
+  {
+    title: 'AI Manifesto Compare',
+    description: 'Use advanced AI to compare policy platforms across parties and understand key differences at a glance.',
+    href: '/manifestos/compare',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1 1 .03 2.711-1.422 2.568l-1.372-.137m0 0L12 19.2m4.408-2.33l-4.408.53m0 0L7.592 19.87m0 0L6.22 20.008c-1.452.143-2.422-1.568-1.422-2.568L6.2 16.038" />
+      </svg>
+    ),
+    color: 'from-purple-500/10 to-purple-600/5',
+    border: 'hover:border-purple-500/25',
+    iconColor: 'text-purple-400 bg-purple-500/10',
+  },
+  {
+    title: 'Secure Digital Voting',
+    description: 'Blockchain-backed, DigiLocker-verified, AI liveness-checked — the most secure digital ballot in India.',
+    href: '/vote',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    ),
+    color: 'from-primary/10 to-primary/5',
+    border: 'hover:border-primary/25',
+    iconColor: 'text-primary bg-primary/10',
+  },
+];
+
+
+
 export default function Home() {
-  const features = [
-    {
-      title: 'Transparent Candidates',
-      description: 'Deep dive into candidate backgrounds, criminal records, and financial disclosures.',
-      icon: (
-        <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ),
-    },
-    {
-      title: 'Direct Civic Reporting',
-      description: 'Report civic issues directly to local representatives and track resolution progress.',
-      icon: (
-        <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-      ),
-    },
-    {
-      title: 'Promise Tracking',
-      description: 'Hold leaders accountable by tracking manifestos against real-world progress.',
-      icon: (
-        <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      ),
-    },
-    {
-      title: 'AI Manifesto Comparison',
-      description: 'Use advanced AI to compare policy platforms and understand key differences.',
-      icon: (
-        <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      ),
-    },
-    {
-      title: 'Secure Voting',
-      description: 'Transparent and secure digital voting experiments powered by blockchain.',
-      icon: (
-        <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-      ),
-    },
-  ];
-
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] overflow-x-hidden">
-      {/* Hero Section */}
-      <section className="relative flex flex-col items-center justify-center pt-16 md:pt-24 pb-24 md:pb-32 px-4 overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10 opacity-20 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-primary rounded-full blur-[80px] md:blur-[120px]" />
-          <div className="absolute bottom-0 right-1/4 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-accent rounded-full blur-[80px] md:blur-[120px]" />
-        </div>
+    <div className="flex flex-col min-h-screen overflow-x-hidden">
 
-        <div className="text-center max-w-4xl animate-in fade-in slide-in-from-bottom-8 duration-1000 px-2">
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black mb-6 md:mb-8 tracking-tighter orange-text-gradient">
-            eLoktantra
-          </h1>
-          <p className="text-lg sm:text-xl md:text-2xl mb-10 md:mb-12 text-gray-400 leading-relaxed font-medium">
-            Empowering Indian democracy through transparency, <br className="hidden sm:block" />
-            accountability, and active civic participation.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 md:gap-6">
-            <Link 
-              href="/candidates" 
-              className="group relative w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 bg-primary hover:bg-accent rounded-full font-bold text-lg md:text-xl transition-all shadow-2xl shadow-primary/30 hover:shadow-primary/50 overflow-hidden text-center"
-            >
-              <span className="relative z-10">Explore Platform</span>
-              <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-            </Link>
-            <Link 
-              href="/dashboard" 
-              className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 glass-card hover:bg-white/10 rounded-full font-bold text-lg md:text-xl transition-all border-white/10 hover:border-white/20 text-center"
-            >
-              Learn More
-            </Link>
-          </div>
-        </div>
+      {/* ══════════════ HERO ══════════════ */}
+      <section className="relative flex flex-col items-center justify-center pt-20 pb-28 px-4 overflow-hidden">
 
-        {/* Feature Cards Grid */}
-        <div id="features" className="mt-24 md:mt-40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-7xl w-full px-4">
-          {features.map((feature, idx) => (
-            <div 
-              key={idx}
-              className="group p-6 md:p-8 glass-card hover:bg-secondary/80 transition-all duration-300 sm:hover:-translate-y-2 border-white/5 hover:border-primary/20"
-            >
-              <div className="mb-4 md:mb-6 p-3 w-fit rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                {feature.icon}
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 group-hover:text-primary transition-colors">
-                {feature.title}
-              </h3>
-              <p className="text-sm md:text-base text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors">
-                {feature.description}
-              </p>
-            </div>
-          ))}
-          
-          {/* Dashboard Quick Link Card */}
-          <Link 
-            href="/dashboard"
-            className="group p-6 md:p-8 glass-card border-dashed border-white/20 hover:border-primary transition-all flex flex-col items-center justify-center text-center bg-transparent"
+        {/* Background Orbs */}
+        <div className="orb orb-primary w-[600px] h-[600px] -top-40 left-1/2 -translate-x-1/2 opacity-60" />
+        <div className="orb orb-accent w-[400px] h-[400px] bottom-0 right-10 opacity-40" style={{ animationDelay: '2s' }} />
+        <div className="orb orb-blue w-[300px] h-[300px] top-20 left-10 opacity-50" style={{ animationDelay: '4s' }} />
+
+        {/* Grid overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.025]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundSize: '60px 60px'
+          }}
+        />
+
+        <div className="relative z-10 max-w-5xl mx-auto text-center">
+
+         
+
+          {/* Headline */}
+          <h1
+            className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter mb-6 animate-slide-up"
+            style={{ animationDelay: '80ms' }}
           >
-            <div className="mb-4 md:mb-6 p-3 rounded-full bg-primary/10 group-hover:bg-primary transition-all duration-300">
-              <svg className="w-8 h-8 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            <span className="hero-text-gradient">eLok</span>
+            <span className="orange-text-gradient">tantra</span>
+          </h1>
+
+          <p
+            className="text-lg sm:text-xl text-muted-light max-w-2xl mx-auto leading-relaxed mb-10 animate-slide-up"
+            style={{ animationDelay: '160ms' }}
+          >
+            Empowering India&apos;s democracy through radical transparency, verifiable elections, and direct civic participation — powered by AI &amp; Blockchain.
+          </p>
+
+          {/* CTAs */}
+          <div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14 animate-slide-up"
+            style={{ animationDelay: '240ms' }}
+          >
+            <Link href="/elections" className="btn-primary text-base px-8 py-4 w-full sm:w-auto">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-            </div>
-            <h3 className="text-xl md:text-2xl font-bold mb-2">Ready to Start?</h3>
-            <p className="text-sm text-gray-400">Jump straight into your constituency dashboard</p>
-          </Link>
+              Explore Elections
+            </Link>
+            <Link href="/vote" className="btn-secondary text-base px-8 py-4 w-full sm:w-auto">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Cast Your Vote
+            </Link>
+          </div>
+
+          {/* Trust Badges */}
+          <div
+            className="flex flex-wrap items-center justify-center gap-3 animate-slide-up"
+            style={{ animationDelay: '320ms' }}
+          >
+            
+          </div>
         </div>
       </section>
 
-      {/* Trust Section / Stats */}
-      <section className="py-16 md:py-24 border-t border-white/5 bg-secondary/30">
-        <div className="container mx-auto px-4 grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-          <div>
-            <div className="text-3xl md:text-4xl font-black text-primary mb-1 md:mb-2">1.4B</div>
-            <div className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-widest">Citizens</div>
-          </div>
-          <div>
-            <div className="text-3xl md:text-4xl font-black text-primary mb-1 md:mb-2">543</div>
-            <div className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-widest">Constituencies</div>
-          </div>
-          <div>
-            <div className="text-3xl md:text-4xl font-black text-primary mb-1 md:mb-2">8.5k+</div>
-            <div className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-widest">Candidates</div>
-          </div>
-          <div>
-            <div className="text-3xl md:text-4xl font-black text-primary mb-1 md:mb-2">100%</div>
-            <div className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-widest">Transparency</div>
+      {/* ══════════════ STATS ══════════════ */}
+      <section className="py-16 border-y border-border">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((stat, i) => (
+              <div
+                key={i}
+                className="stat-card"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
+                <div className="text-3xl mb-2">{stat.icon}</div>
+                <div className="text-3xl md:text-4xl font-black orange-text-gradient mb-1">
+                  {stat.value}
+                </div>
+                <div className="text-xs font-semibold uppercase tracking-widest text-muted">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* ══════════════ FEATURES ══════════════ */}
+      <section className="py-24 px-4">
+        <div className="container mx-auto max-w-7xl">
+
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <div className="badge badge-primary mx-auto mb-5">Platform Features</div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-4">
+              Everything Democracy <span className="orange-text-gradient">Needs</span>
+            </h2>
+            <p className="text-muted-light max-w-xl mx-auto leading-relaxed">
+              A comprehensive civic-tech platform that brings transparency, accountability, and participation to every corner of India.
+            </p>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((feature, idx) => (
+              <Link
+                key={idx}
+                href={feature.href}
+                className={`feature-card border border-border ${feature.border} bg-gradient-to-br ${feature.color} group`}
+              >
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 ${feature.iconColor} transition-all group-hover:scale-110`}>
+                  {feature.icon}
+                </div>
+
+                <h3 className="text-lg font-bold mb-2.5 group-hover:text-foreground transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-muted leading-relaxed group-hover:text-muted-light transition-colors">
+                  {feature.description}
+                </p>
+
+                <div className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-muted group-hover:text-primary transition-colors">
+                  Explore
+                  <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════ CTA BANNER ══════════════ */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <div className="card-premium p-10 md:p-16 text-center relative overflow-hidden">
+            {/* Decorative orbs inside card */}
+            <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-primary/8 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 rounded-full bg-accent/6 blur-3xl" />
+
+            <div className="relative z-10">
+              <div className="badge badge-primary mx-auto mb-6 w-fit">
+                🇮🇳 Make Your Voice Count
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-5">
+                Ready to <span className="orange-text-gradient">Vote?</span>
+              </h2>
+              <p className="text-muted-light max-w-lg mx-auto mb-10 leading-relaxed">
+                Verify your identity with DigiLocker, pass the AI liveness check, and cast your vote securely — all in under 3 minutes.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link href="/vote" className="btn-primary text-base px-10 py-4 w-full sm:w-auto">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Start Voting Now
+                </Link>
+                <Link href="/dashboard" className="btn-secondary text-base px-8 py-4 w-full sm:w-auto">
+                  View Dashboard
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════ FOOTER ══════════════ */}
+      <footer className="border-t border-border py-10 px-4">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                </svg>
+              </div>
+              <span className="nav-logo orange-text-gradient text-lg">eLoktantra</span>
+            </div>
+
+            <p className="text-xs text-muted text-center">
+              Built for India&apos;s democratic future · AES-256 Encrypted · AI-Powered · Blockchain Secured
+            </p>
+
+            <div className="flex items-center gap-6">
+              <Link href="/elections" className="text-xs text-muted hover:text-foreground transition-colors">Elections</Link>
+              <Link href="/candidates" className="text-xs text-muted hover:text-foreground transition-colors">Candidates</Link>
+              <Link href="/vote" className="text-xs text-muted hover:text-foreground transition-colors">Vote</Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }

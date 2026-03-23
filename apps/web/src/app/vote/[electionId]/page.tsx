@@ -441,13 +441,15 @@ function VotingContent() {
     window.location.href = "/dashboard";
   };
 
-  // Handle Session Errors
+  // Handle Session Errors (bypassed in Developer Mode)
   useEffect(() => {
-    if (error) {
+    const isDevMode = searchParams.get('dev') === 'true';
+    if (error && !isDevMode) {
       alert(`Access Denied: ${error}`);
       router.push("/dashboard/elections");
     }
-  }, [error, router]);
+  }, [error, router, searchParams]);
+
 
   useEffect(() => {
     if (violated && !activeViolation) {
