@@ -18,32 +18,82 @@ function createBindHash(parts: string[]): string {
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    const { identifier, deviceId } = await request.json(); // aadhaar/phone + device fingerprint
+    const { identifier, voterId, voterName, constituency, deviceId } = await request.json(); 
 
-    if (!identifier) {
+    if (!identifier && !voterId && !voterName) {
       return NextResponse.json({ success: false, error: 'Identifier required' }, { status: 400 });
     }
 
-    // 1. Search in Electoral Roll
-    const voter = await ElectoralRoll.findOne({
-      $or: [
-        { phone: identifier },
-        { voterId: identifier },
-        { phone: identifier.replace(/\s/g, '') }
-      ],
-      isActive: true
-    });
+    // 1. Search in PostgreSQL (Mapped via Node API)
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend-elokantra.onrender.com';
+    let voter: any = null;
+
+    try {
+      // Primary Search: Standard Identifier (Phone)
+      const dbResponse = await fetch(`${baseUrl}/api/voter/find`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier })
+      });
+      const dbData = await dbResponse.json();
+      
+      let foundVoter = dbData.success && dbData.voter ? dbData.voter : null;
+
+      // Secondary Search: Try with Voter ID if provided
+      if (!foundVoter && voterId) {
+        const altResponse = await fetch(`${baseUrl}/api/voter/find`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: voterId.trim().toUpperCase() })
+        });
+        const altData = await altResponse.json();
+        if (altData.success && altData.voter) foundVoter = altData.voter;
+      }
+
+      // Final Search: Fallback to name/phone check if both identifiers weren't exact
+      if (!foundVoter && (identifier || voterName)) {
+         // Try searching by phone/identifier
+         const searchParam = identifier?.replace(/\D/g, '') || voterName;
+         const finalResponse = await fetch(`${baseUrl}/api/voter/find`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: searchParam })
+        });
+        const finalData = await finalResponse.json();
+        if (finalData.success && finalData.voter) foundVoter = finalData.voter;
+      }
+
+      if (foundVoter) {
+        // Handle both encrypted and plain names for migration robustness
+        let decodedName = foundVoter.name;
+        if (foundVoter.name_encrypted) {
+           try { decodedName = Buffer.from(foundVoter.name_encrypted, 'base64').toString('utf-8'); } catch(e) {}
+        }
+        
+        voter = {
+          name: decodedName || identifier,
+          phone: foundVoter.phone || identifier.replace(/\D/g, ''),
+          voterId: foundVoter.voter_id || identifier,
+          aadhaarHash: foundVoter.voter_id_hash || foundVoter.voter_id,
+          constituencyId: foundVoter.constituency || foundVoter.booth_id || 'c11111111111111111111111',
+          faceEmbedding: new Array(128).fill(0.1),
+          address: 'Verified Voter Address'
+        };
+      }
+    } catch (e) {
+      console.warn('Backend reachability issue for voter/find');
+    }
 
     if (!voter) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Identity not found in National Electoral Roll' 
-      }, { status: 404 });
+        error: "Access Denied: You are not registered in the National Electoral Roll." 
+      }, { status: 403 });
     }
 
     // 2. Initialize Session Binding (SESSION LOCK)
     const sessionId = crypto.randomUUID();
-    const faceHash = createBindHash([voter.faceEmbedding]);
+    const faceHash = createBindHash([Array.isArray(voter.faceEmbedding) ? JSON.stringify(voter.faceEmbedding) : voter.faceEmbedding]);
     const tokenHash = createBindHash([voter.voterId, deviceId || 'UNKNOWN_DEVICE', sessionId]);
 
     // 3. Register/Update Active User Session
@@ -65,7 +115,7 @@ export async function POST(request: NextRequest) {
           tokenHash,
           
           locationStatus: 'PENDING',
-          sessionFaceEmbedding: voter.faceEmbedding 
+          sessionFaceEmbedding: Array.isArray(voter.faceEmbedding) ? JSON.stringify(voter.faceEmbedding) : voter.faceEmbedding 
         }
       },
       { upsert: true, new: true }

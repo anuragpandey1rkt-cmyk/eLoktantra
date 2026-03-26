@@ -1,6 +1,8 @@
 const userRepository = require('../repositories/userRepository');
 const { fetchToken, fetchUserInfo } = require('../integrations/digilocker');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const db = require('../db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
@@ -58,26 +60,111 @@ const digilockerCallback = async (req, res) => {
   }
 };
 
+const cosineSimilarity = (vecA, vecB) => {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+};
+
 const faceVerify = async (req, res) => {
   try {
-    const { image } = req.body;
-    // Mock face verification response
-    const mockResponse = {
-      match: true,
-      confidence: 0.92
-    };
-
-    if (mockResponse.confidence < 0.85) {
-      return res.status(403).json({ match: false, error: 'Low face confidence score' });
+    const { liveEmbedding, voterCardEmbedding, voterIdHash } = req.body;
+    
+    if (!liveEmbedding || !voterCardEmbedding || !voterIdHash) {
+      return res.status(400).json({ success: false, error: 'Missing embeddings or voter info' });
     }
 
-    res.json({ success: true, ...mockResponse });
+    const similarity = cosineSimilarity(liveEmbedding, voterCardEmbedding);
+    if (similarity < 0.75) {
+      return res.status(403).json({ success: false, match: false, error: `Low face confidence score: ${similarity.toFixed(2)}` });
+    }
+
+    // Update Postgres
+    await db.query('UPDATE voters SET face_verified = $1 WHERE voter_id_hash = $2', [true, voterIdHash]);
+
+    res.json({ success: true, match: true, confidence: similarity });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Face verification failed' });
+  }
+};
+
+const uploadCard = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No voter card file uploaded' });
+    }
+
+    const name = req.body.name || 'Unknown';
+    const dob = req.body.dob || null;
+
+    // Simulate Fake OCR extraction
+    const extractedName = name;
+    // Generate a consistent dummy voter ID based on name or random
+    const extractedVoterId = `EPIC${crypto.randomInt(100000, 999999)}`;
+    const extractedConstituency = 'Varanasi';
+
+    const voterIdHash = crypto.createHash('sha256').update(extractedVoterId).digest('hex');
+    const nameEncrypted = Buffer.from(extractedName).toString('base64'); // Mock simple encryption for demo
+    
+    const imagePath = `/uploads/${req.file.filename}`;
+
+    const insertQuery = `
+      INSERT INTO voters (voter_id_hash, name_encrypted, constituency, voter_card_image_path)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, voter_id_hash, constituency;
+    `;
+    await db.query(insertQuery, [voterIdHash, nameEncrypted, extractedConstituency, imagePath]);
+
+    res.json({
+      success: true,
+      file: req.file.filename,
+      extractedDetails: {
+        name: extractedName,
+        voterId: extractedVoterId,
+        constituency: extractedConstituency
+      }
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error during upload' });
+  }
+};
+
+const findVoter = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier) return res.status(400).json({ success: false, error: 'Identifier missing' });
+
+    // Match voter_id_hash OR name
+    const nameEnc = Buffer.from(identifier).toString('base64'); // Mock simple decryption logic
+    const voterHash = crypto.createHash('sha256').update(identifier).digest('hex');
+
+    const result = await db.query(
+      'SELECT * FROM voters WHERE voter_id_hash = $1 OR name_encrypted = $2 OR name_encrypted = $3',
+      [voterHash, nameEnc, identifier] // testing raw identifier just in case it wasn't encrypted
+    );
+    
+    if (result.rows.length > 0) {
+      res.json({ success: true, voter: result.rows[0] });
+    } else {
+      res.json({ success: false, error: 'Not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Database error' });
   }
 };
 
 module.exports = {
   digilockerCallback,
-  faceVerify
+  faceVerify,
+  uploadCard,
+  findVoter
 };

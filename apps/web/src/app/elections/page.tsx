@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowRight, ShieldCheck, Info } from 'lucide-react';
+import { useDigiLockerStore } from '@/lib/store/digilocker-store';
 
 export default function ElectionsPage() {
   const router = useRouter();
   const [elections, setElections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user: digitUser } = useDigiLockerStore();
 
   useEffect(() => {
     const fetchElections = async () => {
@@ -18,7 +20,14 @@ export default function ElectionsPage() {
         const result = await response.json();
         
         // Handle both standard list and wrapped object responses
-        const list = Array.isArray(result) ? result : (result.elections || result.data || []);
+        let list = Array.isArray(result) ? result : (result.elections || result.data || []);
+        
+        // Filter by constituency if not Dev Mode
+        const isDev = new URLSearchParams(window.location.search).get('dev') === 'true';
+        if (!isDev && digitUser?.constituencyId) {
+            list = list.filter((e: any) => e.constituency === digitUser.constituencyId || e.constituency === 'National' || e.constituency === 'General');
+        }
+        
         setElections(list);
       } catch (error) {
         console.error('Election Ledger Sync Error:', error);

@@ -20,10 +20,11 @@ export default function DigiLockerUploadPage() {
     
     try {
       const formData = new FormData()
-      formData.append("aadhaar", file)
+      formData.append("voterCard", file)
+      formData.append("name", user?.name || "Dev User")
       
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001"
-      const response = await fetch(`${baseUrl}/upload-aadhaar`, {
+      const response = await fetch(`${baseUrl}/voter/upload-card`, {
         method: "POST",
         body: formData
       })

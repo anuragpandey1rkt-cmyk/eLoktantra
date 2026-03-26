@@ -4,6 +4,9 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 dotenv.config();
 
@@ -53,11 +56,32 @@ app.use((req, res, next) => {
 // Routes
 app.get('/auth/digilocker/callback', authController.digilockerCallback);
 app.get('/auth/users', authController.getUsers);
-app.post('/verify-face', authController.faceVerify);
+app.post('/voter/verify-face', authController.faceVerify);
 app.post('/risk/evaluate', voteController.evaluateRisk);
+// Set up Multer for File Uploads
+const uploadDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function(req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
+
+app.post('/voter/upload-card', upload.single('voterCard'), authController.uploadCard);
+app.use('/uploads', express.static(uploadDir));
+app.post('/voter/find', authController.findVoter);
 app.post('/generate-token', voteController.generateVotingToken);
+app.post('/vote', voteController.castVote);
 app.use('/candidates', candidateRoutes);
 app.use('/elections', electionRoutes);
+app.get('/elections/:id/counts', electionController.getElectionCounts);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

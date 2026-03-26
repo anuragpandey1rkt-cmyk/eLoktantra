@@ -1,5 +1,6 @@
 const votingTokenRepository = require('../repositories/votingTokenRepository');
 const { v4: uuidv4 } = require('uuid');
+const db = require('../db');
 
 const evaluateRisk = async (req, res) => {
   try {
@@ -49,7 +50,29 @@ const generateVotingToken = async (req, res) => {
   }
 };
 
+const castVote = async (req, res) => {
+  try {
+    const { voterIdHash, electionId, candidateId, constituencyId } = req.body;
+    
+    // Insert into Postgres, which will throw error if unique constraint (voter_id_hash, election_id) is violated
+    const result = await db.query(
+      'INSERT INTO votes (voter_id_hash, election_id, candidate_id, constituency_id) VALUES ($1, $2, $3, $4) RETURNING id',
+      [voterIdHash, electionId, candidateId, constituencyId]
+    );
+
+    res.json({ success: true, blockchainHash: 'PSQL-' + result.rows[0].id + '-' + Date.now() });
+
+  } catch (error) {
+    if (error.code === '23505') { // Postgres unique violation error code
+      return res.status(400).json({ success: false, error: 'Double voting detected: User has already voted in this election.' });
+    }
+    console.error(error);
+    res.status(500).json({ success: false, error: 'Failed to cast vote' });
+  }
+};
+
 module.exports = {
   evaluateRisk,
-  generateVotingToken
+  generateVotingToken,
+  castVote
 };

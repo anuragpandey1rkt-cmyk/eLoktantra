@@ -3,14 +3,14 @@ import axios from 'axios';
 import { getSession } from 'next-auth/react';
 
 // URL for All Operations (Render Backend)
-const BASE_API_URL = process.env.NEXT_PUBLIC_WEB_API_URL || 'https://backend-elokantra.onrender.com';
+const BASE_API_URL = (process.env.NEXT_PUBLIC_WEB_API_URL || 'https://backend-elokantra.onrender.com').replace(/\/$/, '');
 
 /** 
  * UNIFIED API CLIENT (Render)
  */
 const api = axios.create({
   baseURL: BASE_API_URL,
-  timeout: 60000, // Increased to 60s for Render cold starts
+  timeout: 60000, 
 });
 
 api.interceptors.request.use(async (config) => {
@@ -95,3 +95,12 @@ export const votingSyncElection = (id: string) =>
 
 export const adminGetVotesMonitor = () =>
   votingAPI.get('/votes/monitor');
+
+export const adminRegisterVoters = (data: any) =>
+  votingAPI.post('/api/voter/register', data);
+
+export const adminGetElectoralRoll = (electionId: string) => {
+  console.log("Fetching Electoral Roll via Registry Admin Path:", electionId);
+  // Based on working admin patterns, we pull the roll via the election-scoped route
+  return votingAPI.get(`/api/admin/electoral-roll?electionId=${electionId}`);
+};

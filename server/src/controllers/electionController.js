@@ -1,4 +1,5 @@
 const electionRepository = require('../repositories/electionRepository');
+const db = require('../db');
 
 const getActiveElection = async (req, res) => {
   try {
@@ -46,9 +47,23 @@ const updateElectionStatus = async (req, res) => {
   }
 };
 
+const getElectionCounts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      'SELECT candidate_id, COUNT(*) as count FROM votes WHERE election_id = $1 GROUP BY candidate_id',
+      [id]
+    );
+    res.json({ success: true, counts: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch election counts' });
+  }
+};
+
 module.exports = {
   getActiveElection,
   getElections,
   createElection,
-  updateElectionStatus
+  updateElectionStatus,
+  getElectionCounts
 };

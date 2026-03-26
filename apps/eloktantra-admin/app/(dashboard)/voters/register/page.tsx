@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/layout/PageHeader';
 import { Upload, X, Save, AlertTriangle, Layers, MapPin, Loader2 } from 'lucide-react';
-import { contentAPI as backendAPI, adminGetElections, adminGetConstituencies } from '@/lib/api';
+import { contentAPI as backendAPI, adminGetElections, adminGetConstituencies, adminRegisterVoters } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function RegisterVoterPage() {
@@ -30,21 +30,19 @@ export default function RegisterVoterPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedElection) {
-      setConstituencies([]);
-      return;
-    }
     const loadConstituencies = async () => {
       try {
-        const { data } = await adminGetConstituencies(selectedElection);
+        // Fetch all registered constituencies for the dropdown
+        const { data } = await adminGetConstituencies();
+        console.log("Constituencies Loaded:", data);
         const list = Array.isArray(data) ? data : (data.data || data.constituencies || []);
         setConstituencies(list);
       } catch (error) {
-        toast.error('Failed to load regions');
+        toast.error('Failed to load regions from ledger');
       }
     };
     loadConstituencies();
-  }, [selectedElection]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,16 +54,18 @@ export default function RegisterVoterPage() {
     setIsSubmitting(true);
     try {
       const voters = JSON.parse(payload);
-      
+
       // Map to NestJS RegisterVoterDto
       const formattedVoters = (Array.isArray(voters) ? voters : [voters]).map(v => ({
-        voter_id: v.voterId || v.voter_id,
+        voter_id: v.voter_id || v.voterId,
         name: v.name,
-        booth_id: selectedConstituency,
+        phone: v.phone || v.mobile || v.mobileNumber,
+        constituency: selectedConstituency,
+        booth_id: v.booth_id || v.boothId || selectedConstituency,
         election_id: selectedElection
       }));
 
-      await backendAPI.post('/api/voter/register', {
+      await adminRegisterVoters({
         voters: formattedVoters
       });
 
@@ -80,28 +80,28 @@ export default function RegisterVoterPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 animate-in slide-in-from-bottom-4 duration-500 pb-20">
-      <PageHeader 
-        title="Citizen Enrollment" 
+      <PageHeader
+        title="Citizen Enrollment"
         subtitle="Step 2: Scoped registration of voters into the national electoral ledger"
       />
 
       <form onSubmit={handleSubmit} className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-2xl space-y-8">
-        
+
         {/* Selection Hierarchy */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-gray-50 rounded-3xl border border-gray-100">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
               <Layers className="w-3 h-3" /> Election Cycle
             </label>
-            <select 
+            <select
               value={selectedElection}
               onChange={(e) => setSelectedElection(e.target.value)}
               className="w-full h-14 bg-white border-2 border-gray-100 rounded-2xl px-4 font-bold text-sm focus:border-orange-500 outline-none transition-all"
             >
               <option value="">Select Target Election</option>
               {elections?.map(el => (
-                <option key={el._id || el.id} value={el._id || el.id}>
-                  {el.title}
+                <option key={el.id || el._id} value={el.id || el._id}>
+                  {el.name || el.title || "Untitled Election"}
                 </option>
               ))}
             </select>
@@ -111,7 +111,7 @@ export default function RegisterVoterPage() {
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
               <MapPin className="w-3 h-3" /> Target Constituency
             </label>
-            <select 
+            <select
               disabled={!selectedElection}
               value={selectedConstituency}
               onChange={(e) => setSelectedConstituency(e.target.value)}
@@ -119,7 +119,7 @@ export default function RegisterVoterPage() {
             >
               <option value="">Select Region</option>
               {constituencies?.map(c => (
-                <option key={c._id || c.id} value={c._id || c.id}>
+                <option key={c._id || c.id || c.name} value={c.name}>
                   {c.name}
                 </option>
               ))}
@@ -130,7 +130,7 @@ export default function RegisterVoterPage() {
         <div className="bg-orange-50 p-6 rounded-2xl flex items-start space-x-3 border border-orange-100">
           <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
           <p className="text-[11px] text-orange-800 font-bold uppercase tracking-wide leading-relaxed">
-            CRITICAL: Enrollment requires pre-scrubbed JSON data. Voters will be linked specifically to the selected Election and Region code. 
+            CRITICAL: Enrollment requires pre-scrubbed JSON data. Voters will be linked specifically to the selected Election and Region code.
             Cryptographic SOL tokens will be auto-generated for one-time ballot access.
           </p>
         </div>
@@ -140,9 +140,9 @@ export default function RegisterVoterPage() {
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Citizen Registry (JSON)</label>
             <span className="text-[9px] font-bold text-orange-500 uppercase bg-orange-50 px-2 py-1 rounded">Election-Scoped Batch</span>
           </div>
-          
+
           <div className="relative group">
-            <textarea 
+            <textarea
               required
               rows={10}
               value={payload}
@@ -156,20 +156,20 @@ export default function RegisterVoterPage() {
         </div>
 
         <div className="pt-4 flex justify-between items-center border-t border-gray-50">
-           <button 
-             type="button" 
-             onClick={() => router.back()}
-             className="px-8 py-3.5 font-bold text-gray-400 hover:text-gray-900 transition-all flex items-center uppercase tracking-widest text-[10px]"
-           >
-             <X className="w-4 h-4 mr-2" /> Discard
-           </button>
-           <button 
-             type="submit" 
-             disabled={isSubmitting}
-             className="px-12 py-4 bg-orange-500 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20 active:scale-95 flex items-center"
-           >
-             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 mr-2" /> Commit to Ledger</>}
-           </button>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="px-8 py-3.5 font-bold text-gray-400 hover:text-gray-900 transition-all flex items-center uppercase tracking-widest text-[10px]"
+          >
+            <X className="w-4 h-4 mr-2" /> Discard
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-12 py-4 bg-orange-500 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20 active:scale-95 flex items-center"
+          >
+            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 mr-2" /> Commit to Ledger</>}
+          </button>
         </div>
       </form>
     </div>
