@@ -52,6 +52,20 @@ const createElection = async (req, res) => {
   }
 };
 
+const deleteElection = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const election = await electionRepository.deleteById(id);
+    if (!election) {
+      return res.status(404).json({ success: false, error: 'Election not found in MongoDB' });
+    }
+    res.json({ success: true, message: 'Election deleted from synchronized ledger' });
+  } catch (error) {
+    console.error('DELETE_ELECTION_ERROR:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete election' });
+  }
+};
+
 const updateElectionStatus = async (req, res) => {
   try {
     const { id } = req.params;
