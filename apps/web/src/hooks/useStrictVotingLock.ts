@@ -8,7 +8,7 @@ export const useStrictVotingLock = (isActive: boolean = true) => {
   useEffect(() => {
     if (!isActive) return;
     setIsLocked(true);
-    
+
     const enterFullscreen = async () => {
       try {
         const docElmWithBrowsersFullScreenFunctions = document.documentElement as HTMLElement & {
@@ -53,9 +53,9 @@ export const useStrictVotingLock = (isActive: boolean = true) => {
 
     // 🚫 EXIT FULLSCREEN
     const handleFullscreenExit = () => {
-      const isFullscreen = document.fullscreenElement || 
-        (document as any).webkitFullscreenElement || 
-        (document as any).mozFullScreenElement || 
+      const isFullscreen = document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement;
 
       if (!isFullscreen && isLocked) {
